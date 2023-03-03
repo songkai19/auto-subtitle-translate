@@ -6,6 +6,10 @@ import warnings
 import tempfile
 from .utils import filename, str2bool, write_srt
 
+# from .translate_q_runner import run_q
+# from .translate_runner import run
+from .translate_s_runner import run
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -41,7 +45,8 @@ def main():
     model = whisper.load_model(model_name)
     audios = get_audio(args.pop("video"))
     subtitles = get_subtitles(
-        audios, output_srt or srt_only, output_dir, lambda audio_path: model.transcribe(audio_path, **args)
+        audios, output_srt or srt_only, output_dir, lambda audio_path: model.transcribe(
+            audio_path, **args)
     )
 
     if srt_only:
@@ -56,7 +61,7 @@ def main():
         audio = video.audio
 
         ffmpeg.concat(
-            video.filter('subtitles', srt_path, force_style="OutlineColour=&H40000000,BorderStyle=3"), audio, v=1, a=1
+            video.filter('subtitles', srt_path, force_style="Fontname=KaiTi,OutlineColour=&H40000000,BorderStyle=3"), audio, v=1, a=1
         ).output(out_path).run(quiet=True, overwrite_output=True)
 
         print(f"Saved subtitled video to {os.path.abspath(out_path)}.")
@@ -87,7 +92,7 @@ def get_subtitles(audio_paths: list, output_srt: bool, output_dir: str, transcri
     for path, audio_path in audio_paths.items():
         srt_path = output_dir if output_srt else tempfile.gettempdir()
         srt_path = os.path.join(srt_path, f"{filename(path)}.srt")
-        
+
         print(
             f"Generating subtitles for {filename(path)}... This might take a while."
         )
@@ -96,8 +101,12 @@ def get_subtitles(audio_paths: list, output_srt: bool, output_dir: str, transcri
         result = transcribe(audio_path)
         warnings.filterwarnings("default")
 
+        # translate the transcript before writing it to the srt file
+        # run_q(result["segments"])
+        tt=run(result["segments"])
+
         with open(srt_path, "w", encoding="utf-8") as srt:
-            write_srt(result["segments"], file=srt)
+            write_srt(tt, file=srt)
 
         subtitles_path[path] = srt_path
 
